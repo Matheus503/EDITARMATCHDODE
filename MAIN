@@ -1,0 +1,55 @@
+*---------------------------------------------------------------------------------------
+* Programa :
+* Tipo     : Include
+* Descrição: Regra Z para Determinação de Classe de Avaliação para Tipos
+*            de Materiais Referentes aos Processos de Culturas(FM - DD_SHLP_SINGLE_STEP)
+* Transação:
+* Autor    : Matheus Gomes
+* Data     : 08/07/2022
+*----------------------------------------------------------------------------------------
+
+IF callcontrol-top_shlp = 'T025-BKLAS'.
+  IF sy-tcode = 'MM01' OR sy-tcode = 'MM02' OR sy-tcode = 'MM03'.
+      FIELD-SYMBOLS: <fs_mtart> TYPE any.
+
+      TYPES: BEGIN OF type_sets,
+               zrvc_mtart TYPE mtart,
+               zrvc_bklas TYPE bklas,
+             END OF type_sets.
+
+      DATA: lt_tab_aux TYPE TABLE OF type_sets.
+      DATA: ls_tab_aux TYPE type_sets.
+
+      DATA: lv_mtart_fs TYPE c LENGTH 4.
+      DATA: lv_read     TYPE c LENGTH 7.
+
+      ASSIGN ('(SAPLMGMM)MARA-MTART') TO <fs_mtart>.
+      IF <fs_mtart> IS ASSIGNED.
+        lv_mtart_fs = <fs_mtart>.
+      ENDIF.
+
+      CONCATENATE 'MM_'lv_mtart_fs INTO lv_read.
+
+      DATA(it_mm_sets) = NEW zcl_read_set( lv_read )->get_set_values( ).
+
+      IF NOT it_mm_sets IS INITIAL.
+        LOOP AT it_mm_sets INTO DATA(ls_mm_sets).
+
+          SPLIT ls_mm_sets-from AT '_' INTO ls_tab_aux-zrvc_mtart ls_tab_aux-zrvc_bklas.
+
+          APPEND ls_tab_aux TO lt_tab_aux.
+        ENDLOOP.
+      ENDIF.
+
+      IF NOT lt_tab_aux IS INITIAL.
+        LOOP AT record_tab INTO DATA(ls_record).
+          DATA(lv_tabix) = sy-tabix.
+          DATA(lv_bklas) = ls_record-string(4).
+
+          IF NOT line_exists( lt_tab_aux[ zrvc_bklas = lv_bklas ] ).
+            DELETE record_tab INDEX lv_tabix.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+    ENDIF.
+  ENDIF.
